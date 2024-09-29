@@ -63,6 +63,11 @@
   * {
     @apply border-border;
   }
+
+  p {
+    @apply max-w-[65ch];
+  }
+
   body {
     @apply bg-background text-foreground;
   }
