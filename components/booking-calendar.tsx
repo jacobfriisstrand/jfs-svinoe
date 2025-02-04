@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -108,13 +108,13 @@ export default function BookingCalendar() {
 
       setBookings(bookings.filter((booking) => booking.id !== id));
       toast({
-        title: "Booking deleted",
-        description: "The booking has been deleted successfully.",
+        title: "Booking slettet",
+        description: "Bookingen er blevet slettet.",
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete booking.",
+        title: "Fejl",
+        description: "Kunne ikke slette booking.",
         variant: "destructive",
       });
     }

@@ -11,7 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/components/ui/use-toast";
+
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
@@ -34,6 +35,7 @@ export default function GuidePage() {
   const [entries, setEntries] = useState<GuideEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const { toast } = useToast();
 
   // Danish alphabet order mapping
