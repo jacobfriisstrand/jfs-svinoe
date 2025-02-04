@@ -9,12 +9,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for the auth cookie
   const authCookie = request.cookies.get("site-auth");
-  const isAuthenticated = authCookie?.value === "sommerhus";
-
-  // If not authenticated, redirect to login
-  if (!isAuthenticated) {
+  if (!authCookie || authCookie.value !== "sommerhus") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

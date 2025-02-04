@@ -1,27 +1,23 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
-
 export async function POST(request: Request) {
   try {
-    const { password } = await request.json();
+    const body = await request.json();
+    const { password } = body;
 
     if (password === "sommerhus") {
-      const response = NextResponse.json({ success: true });
+      const headers = new Headers();
+      headers.append("Set-Cookie", `site-auth=sommerhus; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
 
-      response.cookies.set("site-auth", "sommerhus", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
+      return new NextResponse(JSON.stringify({ success: true }), {
+        status: 200,
+        headers,
       });
-
-      return response;
     }
 
-    return NextResponse.json({ success: false, message: "Invalid password" }, { status: 401 });
+    return new NextResponse(JSON.stringify({ success: false }), { status: 401 });
   } catch (error) {
     console.error("Auth error:", error);
-    return NextResponse.json({ success: false, message: "Invalid request" }, { status: 400 });
+    return new NextResponse(JSON.stringify({ success: false, error: "Invalid request" }), { status: 400 });
   }
 }
