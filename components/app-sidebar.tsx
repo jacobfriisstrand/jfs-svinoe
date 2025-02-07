@@ -18,7 +18,7 @@ const items = [
     icon: CheckCircle,
   },
   {
-    title: "Afrejse",
+    title: "Afrejsen",
     href: "/check-ud",
     icon: LogOut,
   },
