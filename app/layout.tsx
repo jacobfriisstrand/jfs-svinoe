@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { cookies } from "next/headers";
 import { Toaster } from "@/components/ui/toaster";
+import { CoverImageWrapper } from "@/components/cover-image-wrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,9 +23,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={inter.className}>
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
-          <main className="w-full p-4">
-            <SidebarTrigger />
-            {children}
+          <main className="w-full">
+            <CoverImageWrapper />
+            <div className="p-4">
+              <SidebarTrigger />
+              {children}
+            </div>
           </main>
         </SidebarProvider>
         <Toaster />
