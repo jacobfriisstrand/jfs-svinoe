@@ -234,45 +234,6 @@ export default function GuidePage() {
       </div>
       <Separator />
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle>Tilføj opslag</CardTitle>
-            <CardDescription>Opret et nyt guide opslag.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Titel</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Indtast titel" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Indhold</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Indtast indhold" className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit">Tilføj opslag</Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
         <div className="space-y-6">
           {Object.entries(groupedEntries).map(([letter, entries]) => (
             <div key={letter}>
@@ -345,6 +306,45 @@ export default function GuidePage() {
             </div>
           ))}
         </div>
+        <Card className="h-fit sticky top-4">
+          <CardHeader>
+            <CardTitle>Tilføj opslag</CardTitle>
+            <CardDescription>Opret et nyt guide opslag.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Titel</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Indtast titel" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Indhold</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Indtast indhold" className="min-h-[100px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit">Tilføj opslag</Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
