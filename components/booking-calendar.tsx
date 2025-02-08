@@ -242,7 +242,7 @@ export default function BookingCalendar() {
                 </FormItem>
               )}
             />
-            <div className="flex gap-4 flex-col md:flex-row">
+            <div className="flex gap-4 flex-col xl:flex-row">
               <FormField
                 control={form.control}
                 name="arrival"
