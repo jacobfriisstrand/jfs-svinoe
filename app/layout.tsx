@@ -24,7 +24,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
           <main className="w-full">
-            <CoverImageWrapper />
             <div className="p-4">
               <SidebarTrigger />
               {children}

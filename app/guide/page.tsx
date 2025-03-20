@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-
+import { CoverImageWrapper } from "@/components/cover-image-wrapper";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -229,6 +229,7 @@ export default function GuidePage() {
 
   return (
     <div className="space-y-6">
+      <CoverImageWrapper />
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Fra A {">"} Å</h1>
       </div>

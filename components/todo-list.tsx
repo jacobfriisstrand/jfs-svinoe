@@ -202,7 +202,7 @@ export function TodoList() {
         </Form>
         <div className="mt-6 space-y-4">
           {sortedTasks.map((task) => (
-            <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted">
+            <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted flex-col lg:flex-row gap-4">
               <div className="flex flex-col gap-1">
                 <span className={task.status === "done" ? "line-through text-muted-foreground" : ""}>{task.title}</span>
                 <span className="text-sm text-muted-foreground">Ansvarlig: {task.assignee}</span>

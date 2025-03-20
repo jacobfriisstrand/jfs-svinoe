@@ -4,7 +4,7 @@ import { WysiwygEditor } from "@/components/wysiwyg-editor";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-
+import { CoverImageWrapper } from "@/components/cover-image-wrapper";
 export default function LeavingPage() {
   const [content, setContent] = useState("");
 
@@ -19,6 +19,7 @@ export default function LeavingPage() {
 
   return (
     <div className="space-y-6">
+      <CoverImageWrapper />
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Afrejse</h1>
         <p className="text-muted-foreground">Her findes information om afrejse.</p>
