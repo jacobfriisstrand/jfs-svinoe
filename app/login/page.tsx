@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { CoverImageWrapper } from "@/components/cover-image-wrapper";
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +15,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log("Attempting to log in...");
       const response = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -25,9 +23,7 @@ export default function LoginPage() {
         body: JSON.stringify({ password }),
       });
 
-      console.log("Response status:", response.status);
       const data = await response.json();
-      console.log("Response data:", data);
 
       if (data.success) {
         router.push("/");

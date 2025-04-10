@@ -146,8 +146,6 @@ export default function GuidePage() {
         link_label: values.link_label || null,
       };
 
-      console.log("Inserting data:", entryData);
-
       const { data, error } = await supabase.from("guide_entries").insert(entryData).select();
 
       if (error) {
