@@ -373,7 +373,7 @@ export default function GuidePage() {
                     ) : (
                       <>
                         <CardHeader>
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center flex-wrap gap-4">
                             <CardTitle>{entry.title}</CardTitle>
                             <div className="flex space-x-2">
                               <Button variant="secondary" size="sm" onClick={() => handleEdit(entry)}>
@@ -387,7 +387,7 @@ export default function GuidePage() {
                         </CardHeader>
                         <CardContent>
                           <p className="">{entry.content}</p>
-                          <div className="mt-4 space-y-2">
+                          <div className="mt-4 space-y-2 overflow-hidden">
                             {entry.file_url && (
                               <div>
                                 <a href={entry.file_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
