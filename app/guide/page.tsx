@@ -23,18 +23,25 @@ const formSchema = z.object({
   content: z.string().min(2, {
     message: "Indholdet skal være mindst 2 tegn.",
   }),
+  file: z.any().optional(),
+  external_link: z.string().url().optional().or(z.literal("")),
+  link_label: z.string().optional(),
 });
 
 type GuideEntry = {
   id: string;
   title: string;
   content: string;
+  file_url?: string;
+  external_link?: string;
+  link_label?: string;
 };
 
 export default function GuidePage() {
   const [entries, setEntries] = useState<GuideEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const { toast } = useToast();
 
@@ -111,36 +118,78 @@ export default function GuidePage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const { data, error } = await supabase
-        .from("guide_entries")
-        .insert({
-          title: values.title,
-          content: values.content,
-        })
-        .select();
+      let fileUrl = null;
 
-      if (error) throw error;
+      if (values.file?.[0]) {
+        setUploadingFile(true);
+        const file = values.file[0];
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage.from("guide-files").upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("guide-files").getPublicUrl(fileName);
+
+        fileUrl = publicUrl;
+      }
+
+      // Prepare the data to be inserted
+      const entryData = {
+        title: values.title,
+        content: values.content,
+        file_url: fileUrl,
+        external_link: values.external_link || null,
+        link_label: values.link_label || null,
+      };
+
+      console.log("Inserting data:", entryData);
+
+      const { data, error } = await supabase.from("guide_entries").insert(entryData).select();
+
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       setEntries([...entries, data[0] as GuideEntry]);
       form.reset({
         title: "",
         content: "",
+        file: null,
+        external_link: "",
+        link_label: "",
       });
       toast({
         title: "Opslag oprettet",
         description: "Dit guide opslag er blevet oprettet.",
       });
     } catch (error) {
+      console.error("Full error:", error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setUploadingFile(false);
     }
   }
 
   async function handleDelete(id: string) {
     try {
+      const entry = entries.find((e) => e.id === id);
+
+      if (entry?.file_url) {
+        const fileName = entry.file_url.split("/").pop();
+        if (fileName) {
+          await supabase.storage.from("guide-files").remove([fileName]);
+        }
+      }
+
       const { error } = await supabase.from("guide_entries").delete().eq("id", id);
 
       if (error) throw error;
@@ -166,12 +215,26 @@ export default function GuidePage() {
         .update({
           title: values.title,
           content: values.content,
+          external_link: values.external_link || undefined,
+          link_label: values.link_label || undefined,
         })
         .eq("id", id);
 
       if (error) throw error;
 
-      setEntries(entries.map((entry) => (entry.id === id ? { ...entry, title: values.title, content: values.content } : entry)));
+      setEntries(
+        entries.map((entry) =>
+          entry.id === id
+            ? {
+                ...entry,
+                title: values.title,
+                content: values.content,
+                external_link: values.external_link || undefined,
+                link_label: values.link_label || undefined,
+              }
+            : entry
+        )
+      );
       setEditingId(null);
       editForm.reset();
       toast({
@@ -191,6 +254,8 @@ export default function GuidePage() {
     editForm.reset({
       title: entry.title,
       content: entry.content,
+      external_link: entry.external_link || "",
+      link_label: entry.link_label || "",
     });
     setEditingId(entry.id);
   };
@@ -272,6 +337,32 @@ export default function GuidePage() {
                                 </FormItem>
                               )}
                             />
+                            <FormField
+                              control={editForm.control}
+                              name="external_link"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Ekstern link (valgfrit)</FormLabel>
+                                  <FormControl>
+                                    <Input type="url" placeholder="https://..." {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={editForm.control}
+                              name="link_label"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Link tekst (valgfrit)</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Klik her for at..." {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                             <div className="flex space-x-2">
                               <Button type="submit">Gem</Button>
                               <Button type="button" variant="outline" onClick={handleCancelEdit}>
@@ -297,7 +388,23 @@ export default function GuidePage() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <p className="whitespace-pre-wrap">{entry.content}</p>
+                          <p className="">{entry.content}</p>
+                          <div className="mt-4 space-y-2">
+                            {entry.file_url && (
+                              <div>
+                                <a href={entry.file_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                  {entry.file_url.split("/").pop()}
+                                </a>
+                              </div>
+                            )}
+                            {entry.external_link && (
+                              <div>
+                                <a href={entry.external_link} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+                                  {entry.link_label || entry.external_link}
+                                </a>
+                              </div>
+                            )}
+                          </div>
                         </CardContent>
                       </>
                     )}
@@ -341,7 +448,48 @@ export default function GuidePage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit">Tilføj opslag</Button>
+                <FormField
+                  control={form.control}
+                  name="file"
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Fil (valgfrit)</FormLabel>
+                      <FormControl>
+                        <Input type="file" onChange={(e) => onChange(e.target.files)} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="external_link"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ekstern link (valgfrit)</FormLabel>
+                      <FormControl>
+                        <Input type="url" placeholder="https://..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="link_label"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Link tekst (valgfrit)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Klik her for at..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={uploadingFile}>
+                  {uploadingFile ? "Uploader..." : "Tilføj opslag"}
+                </Button>
               </form>
             </Form>
           </CardContent>
