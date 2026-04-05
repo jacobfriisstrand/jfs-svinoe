@@ -1,6 +1,6 @@
-export const dynamic = "force-dynamic";
+"use client";
 
-("use client");
+export const dynamic = "force-dynamic";
 
 import { useCallback, useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
