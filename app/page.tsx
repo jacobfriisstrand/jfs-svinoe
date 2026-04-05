@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import BookingCalendar from "@/components/booking-calendar";
 import { CoverImageWrapper } from "@/components/cover-image-wrapper";
 import { TodoList } from "@/components/todo-list";

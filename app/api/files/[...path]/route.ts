@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { existsSync, readFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { NextResponse } from "next/server";
