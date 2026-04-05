@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Booking {
+  id           String   @id @default(uuid()) @db.Uuid
+  startDate    DateTime @map("start_date") @db.Date
+  endDate      DateTime @map("end_date") @db.Date
+  familyMember String   @map("family_member")
+  weekNumber   String   @map("week_number")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("bookings")
+}
+
+model CalendarSettings {
+  id           String   @id @default(uuid()) @db.Uuid
+  externalLink String?  @map("external_link")
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("calendar_settings")
+}
+
+model Task {
+  id         String   @id @default(uuid()) @db.Uuid
+  title      String
+  status     String   @default("not_started")
+  orderIndex Int      @map("order_index")
+  assignee   String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("tasks")
+}
+
+model Page {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  content   String   @default("")
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("pages")
+}
+
+model GuideEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  title        String
+  content      String
+  fileUrl      String?  @map("file_url")
+  externalLink String?  @map("external_link")
+  linkLabel    String?  @map("link_label")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("guide_entries")
+}

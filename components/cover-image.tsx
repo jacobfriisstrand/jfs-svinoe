@@ -1,21 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
-import Image from "next/image";
-import { Loader2 } from "lucide-react";
 
 interface CoverImageProps {
-  pageId: string;
   initialImageUrl?: string;
+  pageId: string;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
 
 export function CoverImage({ pageId, initialImageUrl }: CoverImageProps) {
-  const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl || null);
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialImageUrl || null
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [timestamp, setTimestamp] = useState(Date.now());
@@ -25,12 +26,13 @@ export function CoverImage({ pageId, initialImageUrl }: CoverImageProps) {
     setIsLoading(true);
     async function loadPageImage() {
       try {
-        const { data: publicUrl } = supabase.storage.from("images").getPublicUrl(`cover-images/${pageId}`);
+        const res = await fetch(
+          `/api/upload/cover-image?pageId=${encodeURIComponent(pageId)}`
+        );
+        const data = await res.json();
 
-        // Check if the image exists
-        const response = await fetch(publicUrl.publicUrl, { method: "HEAD" });
-        if (response.ok) {
-          setImageUrl(publicUrl.publicUrl);
+        if (data.url) {
+          setImageUrl(data.url);
         } else {
           setImageUrl(null);
         }
@@ -45,10 +47,14 @@ export function CoverImage({ pageId, initialImageUrl }: CoverImageProps) {
     loadPageImage();
   }, [pageId]);
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     try {
       const file = event.target.files?.[0];
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
       // Check file size before proceeding
       if (file.size > MAX_FILE_SIZE) {
@@ -65,23 +71,21 @@ export function CoverImage({ pageId, initialImageUrl }: CoverImageProps) {
       setIsUploading(true);
       setIsLoading(true);
 
-      // Delete existing image if there is one
-      if (imageUrl) {
-        const oldImagePath = `cover-images/${pageId}`;
-        await supabase.storage.from("images").remove([oldImagePath]);
-      }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("pageId", pageId);
 
-      // Upload new image
-      const { data: uploadData, error: uploadError } = await supabase.storage.from("images").upload(`cover-images/${pageId}`, file, {
-        cacheControl: "3600",
-        upsert: true,
+      const res = await fetch("/api/upload/cover-image", {
+        method: "POST",
+        body: formData,
       });
 
-      if (uploadError) throw uploadError;
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
 
-      // Get public URL
-      const { data: publicUrl } = supabase.storage.from("images").getPublicUrl(`cover-images/${pageId}`);
-      setImageUrl(publicUrl.publicUrl + `?t=${Date.now()}`);
+      const data = await res.json();
+      setImageUrl(`${data.url}?t=${Date.now()}`);
       setTimestamp(Date.now());
 
       toast({
@@ -103,22 +107,50 @@ export function CoverImage({ pageId, initialImageUrl }: CoverImageProps) {
     }
   };
 
-  return (
-    <div className="relative w-full h-[40vh] bg-gray-100 border-b border-gray-200">
-      {isLoading ? (
+  const renderContent = () => {
+    if (isLoading) {
+      return (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
-      ) : imageUrl ? (
-        <Image fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" src={`${imageUrl}${imageUrl.includes("?") ? "&" : "?"}t=${timestamp}`} alt="Cover" className="w-full h-full object-cover" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-400">Intet coverbillede for denne side</div>
-      )}
-      <div className="absolute bottom-4 right-4 z-10">
-        <Button variant="secondary" className="bg-white/90 hover:bg-white shadow-sm" disabled={isUploading}>
+      );
+    }
+    if (imageUrl) {
+      return (
+        <Image
+          alt="Cover"
+          className="h-full w-full object-cover"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          src={`${imageUrl}${imageUrl.includes("?") ? "&" : "?"}t=${timestamp}`}
+        />
+      );
+    }
+    return (
+      <div className="flex h-full w-full items-center justify-center text-gray-400">
+        Intet coverbillede for denne side
+      </div>
+    );
+  };
+
+  return (
+    <div className="relative h-[40vh] w-full border-gray-200 border-b bg-gray-100">
+      {renderContent()}
+      <div className="absolute right-4 bottom-4 z-10">
+        <Button
+          className="bg-white/90 shadow-sm hover:bg-white"
+          disabled={isUploading}
+          variant="secondary"
+        >
           <label className="cursor-pointer">
             {isUploading ? "Uploader..." : "Skift coverbillede"}
-            <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+            <input
+              accept="image/*"
+              className="hidden"
+              disabled={isUploading}
+              onChange={handleImageUpload}
+              type="file"
+            />
           </label>
         </Button>
       </div>

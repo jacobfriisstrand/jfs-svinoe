@@ -1,4 +1,4 @@
-import { CoverImage } from "@/components/CoverImage";
+import { CoverImage } from "@/components/cover-image";
 
 export default function ExamplePage() {
   return (

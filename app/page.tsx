@@ -8,11 +8,11 @@ export default function Home() {
     <div className="space-y-6">
       <CoverImageWrapper />
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Forside</h1>
+        <h1 className="font-bold text-3xl tracking-tight">Forside</h1>
         <p className="text-muted-foreground">Opgaver og kalender</p>
       </div>
       <Separator />
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 overflow-hidden">
+      <div className="grid grid-cols-1 gap-6 overflow-hidden md:grid-cols-2">
         <div className="w-full overflow-auto">
           <BookingCalendar />
         </div>

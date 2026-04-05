@@ -1,25 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, LinkIcon, Trash2, Settings2 } from "lucide-react";
 import { da } from "date-fns/locale";
-
-import { cn } from "@/lib/utils";
+import { CalendarIcon, LinkIcon, Settings2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "./loading-spinner";
-import Link from "next/link";
 
 const formSchema = z.object({
   familyMember: z.string().min(2, {
@@ -33,18 +54,21 @@ const settingsFormSchema = z.object({
   external_link: z.string().url({ message: "Indtast venligst en gyldig URL" }),
 });
 
-type Booking = {
-  id: string;
-  family_member: string;
-  start_date: string;
+interface Booking {
   end_date: string;
+  family_member: string;
+  id: string;
+  start_date: string;
   week_number: string;
-};
+}
 
 export default function BookingCalendar() {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [calendarSettings, setCalendarSettings] = useState<{ id?: string; external_link?: string } | null>(null);
+  const [calendarSettings, setCalendarSettings] = useState<{
+    id?: string;
+    external_link?: string;
+  } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -67,29 +91,25 @@ export default function BookingCalendar() {
     }
   }, [calendarSettings, settingsForm]);
 
-  useEffect(() => {
-    fetchBookings();
-    fetchCalendarSettings();
+  const fetchCalendarSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/calendar-settings");
+      const data = await res.json();
+      setCalendarSettings(data);
+    } catch (_error) {
+      console.error("Error fetching calendar settings:", _error);
+    }
   }, []);
 
-  async function fetchCalendarSettings() {
+  const fetchBookings = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from("calendar_settings").select("*").single();
-      if (error) throw error;
-      setCalendarSettings(data);
-    } catch (error) {
-      console.error("Error fetching calendar settings:", error);
-    }
-  }
-
-  async function fetchBookings() {
-    try {
-      const { data, error } = await supabase.from("bookings").select("*").order("start_date", { ascending: true });
-
-      if (error) throw error;
-
+      const res = await fetch("/api/bookings");
+      if (!res.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+      const data = await res.json();
       setBookings(data);
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Failed to fetch bookings.",
@@ -98,20 +118,26 @@ export default function BookingCalendar() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchBookings();
+    fetchCalendarSettings();
+  }, [fetchBookings, fetchCalendarSettings]);
 
   async function deleteBooking(id: string) {
     try {
-      const { error } = await supabase.from("bookings").delete().eq("id", id);
-
-      if (error) throw error;
+      const res = await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error("Failed to delete booking");
+      }
 
       setBookings(bookings.filter((booking) => booking.id !== id));
       toast({
         title: "Booking slettet",
         description: "Bookingen er blevet slettet.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Fejl",
         description: "Kunne ikke slette booking.",
@@ -123,25 +149,29 @@ export default function BookingCalendar() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const weekNumbers = getAllWeekNumbers(values.arrival, values.departure);
-      const { data, error } = await supabase
-        .from("bookings")
-        .insert({
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           family_member: values.familyMember,
           start_date: values.arrival,
           end_date: values.departure,
           week_number: weekNumbers.join(", "),
-        })
-        .select();
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error("Failed to create booking");
+      }
+      const data = await res.json();
 
-      setBookings([...bookings, data[0] as Booking]);
+      setBookings([...bookings, data as Booking]);
       form.reset();
       toast({
         title: "Booking oprettet",
         description: "Din booking er blevet oprettet.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Fejl",
         description: "Noget gik galt. Prøv venligst igen.",
@@ -152,17 +182,29 @@ export default function BookingCalendar() {
 
   async function onSettingsSubmit(values: z.infer<typeof settingsFormSchema>) {
     try {
-      const { error } = await supabase.from("calendar_settings").update({ external_link: values.external_link }).eq("id", calendarSettings?.id);
+      const res = await fetch("/api/calendar-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: calendarSettings?.id,
+          external_link: values.external_link,
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error("Failed to update settings");
+      }
 
-      setCalendarSettings({ ...calendarSettings, external_link: values.external_link });
+      setCalendarSettings({
+        ...calendarSettings,
+        external_link: values.external_link,
+      });
       setDialogOpen(false);
       toast({
         title: "Link opdateret",
         description: "Det eksterne kalender link er blevet opdateret.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Fejl",
         description: "Noget gik galt. Prøv venligst igen.",
@@ -178,18 +220,22 @@ export default function BookingCalendar() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-4 justify-start mb-4 flex-wrap">
+        <div className="mb-4 flex flex-wrap items-center justify-start gap-4">
           {calendarSettings?.external_link && (
-            <Link href={calendarSettings.external_link} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm">
+            <Link
+              href={calendarSettings.external_link}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Button size="sm" variant="outline">
                 <LinkIcon className="h-4 w-4" />
                 Link til ekstern kalender
               </Button>
             </Link>
           )}
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog onOpenChange={setDialogOpen} open={dialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button size="sm" variant="outline">
                 <Settings2 className="h-4 w-4" />
                 Rediger link
               </Button>
@@ -199,7 +245,10 @@ export default function BookingCalendar() {
                 <DialogTitle>Rediger eksternt kalender link</DialogTitle>
               </DialogHeader>
               <Form {...settingsForm}>
-                <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-4">
+                <form
+                  className="space-y-4"
+                  onSubmit={settingsForm.handleSubmit(onSettingsSubmit)}
+                >
                   <FormField
                     control={settingsForm.control}
                     name="external_link"
@@ -224,11 +273,13 @@ export default function BookingCalendar() {
           <CalendarIcon className="size-6" />
           <CardTitle>Kalender</CardTitle>
         </div>
-        <CardDescription>Se hvem der bruger sommerhuset eller lav din egen 'booking'.</CardDescription>
+        <CardDescription>
+          Se hvem der bruger sommerhuset eller lav din egen 'booking'.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
               name="familyMember"
@@ -242,7 +293,7 @@ export default function BookingCalendar() {
                 </FormItem>
               )}
             />
-            <div className="flex gap-4 flex-col xl:flex-row">
+            <div className="flex flex-col gap-4 xl:flex-row">
               <FormField
                 control={form.control}
                 name="arrival"
@@ -251,13 +302,31 @@ export default function BookingCalendar() {
                     <FormLabel>Ankomst</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                        <Button
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          variant={"outline"}
+                        >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? format(field.value, "d. MMM yyyy", { locale: da }) : <span>Vælg ankomst</span>}
+                          {field.value ? (
+                            format(field.value, "d. MMM yyyy", { locale: da })
+                          ) : (
+                            <span>Vælg ankomst</span>
+                          )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar showWeekNumber mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date()} initialFocus locale={da} />
+                      <PopoverContent align="start" className="w-auto p-0">
+                        <Calendar
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                          locale={da}
+                          mode="single"
+                          onSelect={field.onChange}
+                          selected={field.value}
+                          showWeekNumber
+                        />
                       </PopoverContent>
                     </Popover>
                     <FormMessage />
@@ -272,22 +341,34 @@ export default function BookingCalendar() {
                     <FormLabel>Afrejse</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                        <Button
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          variant={"outline"}
+                        >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? format(field.value, "d. MMM yyyy", { locale: da }) : <span>Vælg afrejse</span>}
+                          {field.value ? (
+                            format(field.value, "d. MMM yyyy", { locale: da })
+                          ) : (
+                            <span>Vælg afrejse</span>
+                          )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent align="start" className="w-auto p-0">
                         <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
                           disabled={(date) => {
                             const arrival = form.getValues("arrival");
-                            return date < new Date() || (arrival && date <= arrival);
+                            return (
+                              date < new Date() || (arrival && date <= arrival)
+                            );
                           }}
                           initialFocus
                           locale={da}
+                          mode="single"
+                          onSelect={field.onChange}
+                          selected={field.value}
                         />
                       </PopoverContent>
                     </Popover>
@@ -300,23 +381,42 @@ export default function BookingCalendar() {
           </form>
         </Form>
         <div className="mt-6">
-          <h3 className="font-medium mb-4">Nuværende bookinger</h3>
+          <h3 className="mb-4 font-medium">Nuværende bookinger</h3>
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div
+                className="flex items-center justify-between rounded-lg border p-4"
+                key={booking.id}
+              >
                 <div>
                   <p className="font-medium">{booking.family_member}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(booking.start_date), "d. MMM yyyy", { locale: da })} - {format(new Date(booking.end_date), "d. MMM yyyy", { locale: da })}
+                  <p className="text-muted-foreground text-sm">
+                    {format(new Date(booking.start_date), "d. MMM yyyy", {
+                      locale: da,
+                    })}{" "}
+                    -{" "}
+                    {format(new Date(booking.end_date), "d. MMM yyyy", {
+                      locale: da,
+                    })}
                   </p>
-                  <p className="text-sm text-muted-foreground">Uge {booking.week_number}</p>
+                  <p className="text-muted-foreground text-sm">
+                    Uge {booking.week_number}
+                  </p>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => deleteBooking(booking.id)}>
+                <Button
+                  onClick={() => deleteBooking(booking.id)}
+                  size="icon"
+                  variant="ghost"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
-            {bookings.length === 0 && <p className="text-muted-foreground text-center py-4">Ingen bookinger endnu</p>}
+            {bookings.length === 0 && (
+              <p className="py-4 text-center text-muted-foreground">
+                Ingen bookinger endnu
+              </p>
+            )}
           </div>
         </div>
       </CardContent>
@@ -325,11 +425,13 @@ export default function BookingCalendar() {
 }
 
 function getWeekNumber(date: Date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  );
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
 }
 
 function getAllWeekNumbers(startDate: Date, endDate: Date): number[] {

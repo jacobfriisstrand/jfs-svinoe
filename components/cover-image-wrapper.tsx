@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { CoverImage } from "./CoverImage";
+import { CoverImage } from "./cover-image";
 
 export function CoverImageWrapper() {
   const pathname = usePathname() || "/";

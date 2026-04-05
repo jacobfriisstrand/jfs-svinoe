@@ -1,7 +1,7 @@
-let userConfig = undefined;
+let userConfig;
 try {
   userConfig = await import("./v0-user-next.config");
-} catch (e) {
+} catch (_e) {
   // ignore error
 }
 
@@ -14,12 +14,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "bgrzuxsfqgdfmmzuzoqr.supabase.co",
-      },
-    ],
+    remotePatterns: [],
   },
   experimental: {
     webpackBuildWorker: true,
@@ -36,7 +31,10 @@ function mergeConfig(nextConfig, userConfig) {
   }
 
   for (const key in userConfig) {
-    if (typeof nextConfig[key] === "object" && !Array.isArray(nextConfig[key])) {
+    if (
+      typeof nextConfig[key] === "object" &&
+      !Array.isArray(nextConfig[key])
+    ) {
       nextConfig[key] = {
         ...nextConfig[key],
         ...userConfig[key],

@@ -1,18 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { ListCheck, Loader2, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 import { LoadingSpinner } from "./loading-spinner";
 
 const formSchema = z.object({
@@ -24,13 +42,13 @@ const formSchema = z.object({
   }),
 });
 
-type Task = {
-  id: string;
-  title: string;
-  status: "not_started" | "doing" | "done";
-  order_index: number;
+interface Task {
   assignee: string;
-};
+  id: string;
+  order_index: number;
+  status: "not_started" | "doing" | "done";
+  title: string;
+}
 
 const StatusDot = ({ status }: { status: Task["status"] }) => {
   const colors = {
@@ -39,7 +57,7 @@ const StatusDot = ({ status }: { status: Task["status"] }) => {
     done: "bg-green-500", // Green for completed
   };
 
-  return <div className={`w-2.5 h-2.5 rounded-full ${colors[status]}`} />;
+  return <div className={`h-2.5 w-2.5 rounded-full ${colors[status]}`} />;
 };
 
 export function TodoList() {
@@ -50,18 +68,15 @@ export function TodoList() {
     resolver: zodResolver(formSchema),
   });
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  async function fetchTasks() {
+  const fetchTasks = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from("tasks").select("*").order("order_index", { ascending: true });
-
-      if (error) throw error;
-
+      const res = await fetch("/api/tasks");
+      if (!res.ok) {
+        throw new Error("Failed to fetch tasks");
+      }
+      const data = await res.json();
       setTasks(data);
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Failed to fetch tasks.",
@@ -70,20 +85,25 @@ export function TodoList() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   async function deleteTask(taskId: string) {
     try {
-      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-
-      if (error) throw error;
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error("Failed to delete task");
+      }
 
       setTasks(tasks.filter((task) => task.id !== taskId));
       toast({
         title: "Opgave slettet",
         description: "Opgaven er blevet slettet.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Fejl",
         description: "Noget gik galt. Prøv venligst igen.",
@@ -95,25 +115,29 @@ export function TodoList() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           title: values.title,
           assignee: values.assignee,
           status: "not_started",
           order_index: tasks.length,
-        })
-        .select();
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error("Failed to create task");
+      }
+      const data = await res.json();
 
-      setTasks([...tasks, data[0] as Task]);
+      setTasks([...tasks, data as Task]);
       form.reset();
       toast({
         title: "Opgave oprettet",
         description: "Din opgave er blevet oprettet.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -126,17 +150,29 @@ export function TodoList() {
 
   async function updateTaskStatus(taskId: string, status: string) {
     try {
-      const { error } = await supabase.from("tasks").update({ status }).eq("id", taskId);
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error("Failed to update task");
+      }
 
-      setTasks(tasks.map((task) => (task.id === taskId ? { ...task, status: status as Task["status"] } : task)));
+      setTasks(
+        tasks.map((task) =>
+          task.id === taskId
+            ? { ...task, status: status as Task["status"] }
+            : task
+        )
+      );
 
       toast({
         title: "Opgave opdateret",
         description: "Opgavestatus er blevet opdateret.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -151,8 +187,12 @@ export function TodoList() {
 
   const sortedTasks = [...tasks].sort((a, b) => {
     // Move done tasks to the bottom
-    if (a.status === "done" && b.status !== "done") return 1;
-    if (a.status !== "done" && b.status === "done") return -1;
+    if (a.status === "done" && b.status !== "done") {
+      return 1;
+    }
+    if (a.status !== "done" && b.status === "done") {
+      return -1;
+    }
     return a.order_index - b.order_index;
   });
 
@@ -163,11 +203,13 @@ export function TodoList() {
           <ListCheck className="size-6" />
           <CardTitle>Opgaveliste</CardTitle>
         </div>
-        <CardDescription>Administrering af opgaver for sommerhuset.</CardDescription>
+        <CardDescription>
+          Administrering af opgaver for sommerhuset.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
               name="title"
@@ -194,7 +236,7 @@ export function TodoList() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={loading}>
+            <Button disabled={loading} type="submit">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Tilføj opgave
             </Button>
@@ -202,14 +244,30 @@ export function TodoList() {
         </Form>
         <div className="mt-6 space-y-4">
           {sortedTasks.map((task) => (
-            <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted flex-col lg:flex-row gap-4">
+            <div
+              className="flex flex-col items-center justify-between gap-4 rounded-lg border bg-muted p-4 lg:flex-row"
+              key={task.id}
+            >
               <div className="flex flex-col gap-1">
-                <span className={task.status === "done" ? "line-through text-muted-foreground" : ""}>{task.title}</span>
-                <span className="text-sm text-muted-foreground">Ansvarlig: {task.assignee}</span>
+                <span
+                  className={
+                    task.status === "done"
+                      ? "text-muted-foreground line-through"
+                      : ""
+                  }
+                >
+                  {task.title}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  Ansvarlig: {task.assignee}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <StatusDot status={task.status} />
-                <Select value={task.status} onValueChange={(value) => updateTaskStatus(task.id, value)}>
+                <Select
+                  onValueChange={(value) => updateTaskStatus(task.id, value)}
+                  value={task.status}
+                >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -219,13 +277,21 @@ export function TodoList() {
                     <SelectItem value="done">Færdig</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)}>
+                <Button
+                  onClick={() => deleteTask(task.id)}
+                  size="icon"
+                  variant="ghost"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           ))}
-          {tasks.length === 0 && <p className="text-muted-foreground text-center py-4">Ingen opgaver endnu</p>}
+          {tasks.length === 0 && (
+            <p className="py-4 text-center text-muted-foreground">
+              Ingen opgaver endnu
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
